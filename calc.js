@@ -1,177 +1,228 @@
+/* eslint-disable max-classes-per-file */
 class Num {
-  constructor(valueString = 0, action = null) {
-    switch (action) {
+  constructor(value = 0, operator = null) {
+    switch (operator) {
       case '+':
-        this.action = null;
-        this.value = Number(valueString);
+        this.operator = null;
+        this.value = value;
         break;
       case '-':
-        this.action = null;
-        this.value = (-1) * Number(valueString);
+        this.operator = null;
+        this.value = (-1) * value;
         break;
       default:
-        this.action = action;
-        this.value = Number(valueString);
+        this.operator = operator;
+        this.value = value;
         break;
     }
   }
 }
 
-function multyply(num1, num2) {
-  const value = num1.value * num2.value;
-  const newNum = new Num(value, null);
-  return newNum;
-}
-
-function divide(num1, num2) {
-  const value = num1.value / num2.value;
-  const newNum = new Num(value, null);
-  return newNum;
-}
-
-function splitString(string) {
-  const pack = [];
-  let i = 1;
-  let j = 0;
-
-  while (i <= string.length) {
-    if (Number.isNaN(+string[i]) && string[i] !== '.') {
-      const action = Number.isNaN(+string[j]) ? string[j] : null;
-      const valueString = action
-        ? string.slice(j + 1, i)
-        : string.slice(j, i);
-
-      pack.push(new Num(valueString, action));
-      j = i;
-    }
-    i += 1;
+class Parser {
+  static #isMathOperator(char) {
+    return ['+', '-', '*', '/'].includes(char);
   }
-  return pack;
-}
 
-function packArray(array) {
-  const pack = [array[0]];
-  for (let i = 1; i < array.length; i += 1) {
-    const num = array[i];
-    if (num.action) {
-      if (pack[pack.length - 1] instanceof Num) {
-        const lastElem = pack.pop();
-        pack.push([lastElem, num]);
+  static findCloseBracketIndex(expression, startIndex) {
+    let counter = 1;
+    let pointer = startIndex + 1;
+    while (counter > 0 && pointer < expression.length) {
+      if (expression[pointer] === '(') counter += 1;
+      if (expression[pointer] === ')') counter -= 1;
+      pointer += 1;
+    }
+    return counter === 0 && pointer - 1;
+  }
+
+  static splitNums(expression) {
+    const pack = [];
+    let firstCharIndex = 1;
+    let lastCharIndex = 0;
+    while (firstCharIndex <= expression.length) {
+      const firstChar = expression[firstCharIndex];
+      const lastChar = expression[lastCharIndex];
+      if (this.#isMathOperator(firstChar) || !firstChar) {
+        const operator = this.#isMathOperator(lastChar) ? lastChar : null;
+        const value = operator
+          ? Number(expression.slice(lastCharIndex + 1, firstCharIndex))
+          : Number(expression.slice(lastCharIndex, firstCharIndex));
+        pack.push(new Num(value, operator));
+        lastCharIndex = firstCharIndex;
+      }
+      firstCharIndex += 1;
+    }
+    return pack;
+  }
+
+  static splitBrackets(expression) {
+    let firstCharIndex = 0;
+    let lastCharIndex = 0;
+    const pack = [];
+    while (firstCharIndex < expression.length) {
+      if (expression[firstCharIndex] === '(') {
+        if (firstCharIndex !== lastCharIndex) {
+          pack.push(expression.slice(lastCharIndex, firstCharIndex));
+        }
+        const closeBracketIndex = this.findCloseBracketIndex(expression, firstCharIndex);
+        const subString = expression.slice(firstCharIndex + 1, closeBracketIndex);
+        pack.push(this.splitBrackets(subString));
+        firstCharIndex = closeBracketIndex + 1;
+        lastCharIndex = firstCharIndex;
       } else {
-        pack[pack.length - 1].push(num);
+        firstCharIndex += 1;
       }
-    } else {
-      pack.push(num);
     }
-  }
-  return pack;
-}
 
-function solveFirst(array) {
-  let memo = array[0];
-  for (let i = 1; i < array.length; i += 1) {
-    const current = array[i];
-    const newMemo = (current.action === '*') ? multyply(memo, current) : divide(memo, current);
-    memo = newMemo;
-  }
-  return memo;
-}
-
-function summArray(array) {
-  return array.reduce((acc, el) => new Num(acc.value + el.value), new Num());
-}
-
-function solveSplitted(array) {
-  const packed = packArray(array);
-  const firstStep = packed.map((el) => (el instanceof Num ? el : solveFirst(el)));
-  return summArray(firstStep);
-}
-
-function solveSubString(string) {
-  const splitted = splitString(string);
-  return solveSplitted(splitted);
-}
-
-function findCloseBracket(string, start) {
-  let counter = 1;
-  let i = start + 1;
-  while (counter > 0) {
-    if (string[i] === '(') counter += 1;
-    if (string[i] === ')') counter -= 1;
-    i += 1;
-  }
-  return i - 1;
-}
-
-function splitBrackets(string) {
-  let i = 0;
-  let j = 0;
-  const pack = [];
-  while (i < string.length) {
-    if (string[i] === '(') {
-      if (i !== j) {
-        pack.push(string.slice(j, i));
-      }
-      const closeBracket = findCloseBracket(string, i);
-      const subString = string.slice(i + 1, closeBracket);
-      pack.push(splitBrackets(subString));
-      i = closeBracket + 1;
-      j = i;
-    } else {
-      i += 1;
+    if (firstCharIndex !== lastCharIndex) {
+      pack.push(expression.slice(lastCharIndex, firstCharIndex));
     }
-  }
-  if (i !== j) {
-    pack.push(string.slice(j, i));
-  }
-  return pack;
-}
-
-function solveUnbracketed(array) {
-  if (array.length === 1) {
-    if (typeof array[0] === 'string') {
-      return solveSubString(array[0]);
-    }
-    return solveUnbracketed(array[0]);
+    return pack;
   }
 
-  let pack = [];
-  let actionCash = null;
-  for (let i = 0; i < array.length; i += 1) {
-    const element = array[i];
+  static packArray(arrayOfNums) {
+    const pack = [arrayOfNums[0]];
+    for (let i = 1; i < arrayOfNums.length; i += 1) {
+      const currentNum = arrayOfNums[i];
+      const lasPackElement = pack[pack.length - 1];
 
-    if (typeof element === 'object') {
-      const { value } = solveUnbracketed(element);
-      const newNum = new Num(value, actionCash);
-      actionCash = null;
-      pack.push(newNum);
-    } else {
-      const lastChar = element[element.length - 1];
-      if (Number.isNaN(+lastChar)) {
-        actionCash = lastChar;
-        pack = [...pack, ...splitString(element.slice(0, -1))];
+      if (currentNum.operator) {
+        if (lasPackElement instanceof Num) {
+          const cashedLastElement = pack.pop();
+          pack.push([cashedLastElement, currentNum]);
+        } else {
+          lasPackElement.push(currentNum);
+        }
       } else {
-        pack = [...pack, ...splitString(element)];
+        pack.push(currentNum);
       }
     }
+    return pack;
   }
-  return solveSplitted(pack);
 }
 
-function solve(string) {
-  const unbracketed = splitBrackets(string);
-  const num = solveUnbracketed(unbracketed);
-  return num.value;
+class ArrayMathExpression {
+  static #multiplyNums(num1, num2) {
+    const value = num1.value * num2.value;
+    const newNum = new Num(value, null);
+    return newNum;
+  }
+
+  static #divideNums(num1, num2) {
+    const value = num1.value / num2.value;
+    const newNum = new Num(value, null);
+    return newNum;
+  }
+
+  static multiply(arrayOfNums) {
+    let memo = arrayOfNums[0];
+    for (let i = 1; i < arrayOfNums.length; i += 1) {
+      const currentNum = arrayOfNums[i];
+      const newMemo = (currentNum.operator === '*') ? this.#multiplyNums(memo, currentNum) : this.#divideNums(memo, currentNum);
+      memo = newMemo;
+    }
+    return memo;
+  }
+
+  static summ(arrayOfNums) {
+    return arrayOfNums.reduce((acc, el) => new Num(acc.value + el.value), new Num());
+  }
+}
+
+class Validator {
+  static isCorrectBrackets(expression) {
+    let counter = 0;
+    for (let i = 0; i < expression.length; i += 1) {
+      const char = expression[i];
+      if (char === '(') {
+        counter += 1;
+        const closeBracketIndex = Parser.findCloseBracketIndex(expression, i);
+        if (!closeBracketIndex) return false;
+      }
+      if (char === ')') counter -= 1;
+    }
+    return counter === 0;
+  }
+
+  static isCorrectSymbols(expression) {
+    return expression.match(/^[()+\-*/.\d]+$/);
+  }
+
+  static isValid(expression) {
+    return (
+      this.isCorrectBrackets(expression)
+      && this.isCorrectSymbols(expression)
+    );
+  }
+}
+class Calculator {
+  static #isMathOperator(char) {
+    return ['+', '-', '*', '/'].includes(char);
+  }
+
+  static #countSimpleExpression(expression) {
+    const baseArray = typeof expression === 'string'
+      ? Parser.splitNums(expression)
+      : expression;
+
+    const packedNums = Parser.packArray(baseArray);
+    const arrayOfNums = packedNums.map((numOrArray) => (
+      numOrArray instanceof Num
+        ? numOrArray
+        : ArrayMathExpression.multiply(numOrArray)
+    ));
+
+    const num = ArrayMathExpression.summ(arrayOfNums);
+    return num;
+  }
+
+  static #countComplexExpression(expression) {
+    const baseArray = (typeof expression === 'string')
+      ? Parser.splitBrackets(expression)
+      : expression;
+
+    if (baseArray.length === 1) {
+      const content = baseArray[0];
+
+      if (typeof content === 'string') {
+        return this.#countSimpleExpression(content);
+      }
+      return this.#countComplexExpression(content);
+    }
+
+    let pack = [];
+    let operatorCash = null;
+    for (let i = 0; i < baseArray.length; i += 1) {
+      const element = baseArray[i];
+
+      if (typeof element === 'object') {
+        const { value } = this.#countComplexExpression(element);
+        const newNum = new Num(value, operatorCash);
+        operatorCash = null;
+        pack.push(newNum);
+      } else {
+        const lastChar = element[element.length - 1];
+        if (this.#isMathOperator(lastChar)) {
+          operatorCash = lastChar;
+          pack = [...pack, ...Parser.splitNums(element.slice(0, -1))];
+        } else {
+          pack = [...pack, ...Parser.splitNums(element)];
+        }
+      }
+    }
+    return this.#countSimpleExpression(pack);
+  }
+
+  static count(expression) {
+    if (!Validator.isValid(expression)) return 'Не корректный синтаксис';
+    const num = this.#countComplexExpression(expression);
+    return num.value;
+  }
 }
 
 module.exports = {
   Num,
-  solveFirst,
-  splitString,
-  summArray,
-  packArray,
-  solveSubString,
-  splitBrackets,
-  findCloseBracket,
-  solve,
+  Calculator,
+  Validator,
+  Parser,
+  ArrayMathExpression,
 };

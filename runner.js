@@ -1,6 +1,10 @@
-const { solve } = require('./calc');
+const readline = require('readline');
+const { stdin: input, stdout: output } = require('process');
+const { Calculator } = require('./calc');
 
-const string = '(14.5*8-45)/83*(7.5+9*8/(78*15))-45+(3)-5.2/8';
+const rl = readline.createInterface({ input, output });
 
-console.log('Задано выражение: ', string);
-console.log('Ответ: ', solve(string));
+rl.question('Введите выражение:\n', (expression) => {
+  console.log(`Результат: ${Calculator.count(expression)}`);
+  rl.close();
+});
